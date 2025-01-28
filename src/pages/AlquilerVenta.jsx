@@ -264,7 +264,7 @@ const AlquilerVenta = () => {
                       )}
                     </div>
                     <a
-                      href={`/property/${property.cod_ofer}`}
+                      href={`/propiedad/${property.cod_ofer}`}
                       className="text-primary hover:text-opacity-80 transition-colors"
                     >
                       + INFO

@@ -6,11 +6,11 @@ const TOKEN = "0F6399CF144116F22D567B761ABA2CEF"; // Tu token aquí
 const cache = {
   propertyTypes: null,
   locations: null,
-  lastPropertiesFetch: null,
-  properties: null,
+  lastPropertyTypesFetch: null,
+  lastLocationsFetch: null,
 };
 
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos en milisegundos
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
 
 const fetchAPI = async (endpoint, options = {}) => {
   try {
@@ -38,6 +38,8 @@ const fetchAPI = async (endpoint, options = {}) => {
   }
 };
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const getPropertyTypes = async () => {
   try {
     // Usar cache si está disponible y es reciente
@@ -48,11 +50,18 @@ export const getPropertyTypes = async () => {
       return cache.propertyTypes;
     }
 
+    // Añadir un pequeño retraso antes de hacer la petición
+    await delay(1000); // 1 segundo de retraso
+
     const data = await fetchAPI("/enums/?tipos");
     cache.propertyTypes = data;
     cache.lastPropertyTypesFetch = Date.now();
     return data;
   } catch (error) {
+    if (error.message.includes("408")) {
+      console.warn("Rate limit reached for property types, using cached data");
+      return cache.propertyTypes || [];
+    }
     console.error("Error fetching property types:", error);
     return cache.propertyTypes || [];
   }
@@ -60,7 +69,6 @@ export const getPropertyTypes = async () => {
 
 export const getLocations = async () => {
   try {
-    // Usar cache si está disponible y es reciente
     if (
       cache.locations &&
       Date.now() - cache.lastLocationsFetch < CACHE_DURATION
@@ -68,11 +76,18 @@ export const getLocations = async () => {
       return cache.locations;
     }
 
+    // Añadir un pequeño retraso antes de hacer la petición
+    await delay(1000); // 1 segundo de retraso
+
     const data = await fetchAPI("/enums/?ciudades");
     cache.locations = data;
     cache.lastLocationsFetch = Date.now();
     return data;
   } catch (error) {
+    if (error.message.includes("408")) {
+      console.warn("Rate limit reached for locations, using cached data");
+      return cache.locations || [];
+    }
     console.error("Error fetching locations:", error);
     return cache.locations || [];
   }
@@ -112,10 +127,28 @@ export const getProperties = async (filters = {}) => {
 
 export const getPropertyDetail = async (cod_ofer) => {
   try {
-    const data = await fetchAPI(`/propiedades/?cod_ofer=${cod_ofer}`);
-    return data;
+    // La petición base debería tener este formato según la documentación:
+    const data = await fetchAPI(`/propiedades/?cod_ofer=${cod_ofer}`, {
+      method: "GET", // Cambiamos a GET
+      headers: {
+        "Content-Type": "application/json",
+        // El token ya lo estás añadiendo en fetchAPI
+      },
+    });
+
+    // Aquí podríamos acceder a las fotos con una URL base + el código de la oferta
+    // Esto es una suposición, necesitaríamos confirmar con la documentación
+    const photos = Array.from(
+      { length: data.numfotos },
+      (_, i) => `/ruta-base-fotos/${data.cod_ofer}/foto_${i + 1}.jpg`
+    );
+
+    return {
+      ...data,
+      photos,
+    };
   } catch (error) {
     console.error("Error fetching property detail:", error);
-    return null;
+    throw error;
   }
 };

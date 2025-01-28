@@ -6,6 +6,7 @@ import HomePage from "./pages/HomePage";
 import Nosotras from "./pages/Nosotras";
 import Contacto from "./pages/Contacto";
 import AlquilerVenta from "./pages/AlquilerVenta";
+import PropertyDetail from "./pages/PropertyDetail";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="/nosotras" element={<Nosotras />} />
             <Route path="/contacto" element={<Contacto />} />
             <Route path="/alquiler-venta" element={<AlquilerVenta />} />
+            <Route path="/propiedad/:id" element={<PropertyDetail />} />
           </Routes>
         </main>
         <Footer />
