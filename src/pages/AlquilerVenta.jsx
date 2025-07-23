@@ -33,12 +33,12 @@ const AlquilerVenta = () => {
         setProperties(propertiesData);
 
         // Intentamos cargar los tipos y ubicaciones, pero no bloqueamos si fallan
-        try {
-          const typesData = await getPropertyTypes();
-          setPropertyTypes(typesData);
-        } catch (error) {
-          console.warn("Failed to load property types:", error);
-        }
+        // try {
+        //   const typesData = await getPropertyTypes();
+        //   setPropertyTypes(typesData);
+        // } catch (error) {
+        //   console.warn("Failed to load property types:", error);
+        // }
 
         try {
           const locationsData = await getLocations();

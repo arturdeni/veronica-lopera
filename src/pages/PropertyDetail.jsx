@@ -1,4 +1,3 @@
-// src/pages/PropertyDetail.jsx
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -11,7 +10,7 @@ import {
   Mail,
   Calendar,
 } from "lucide-react";
-import { getPropertyDetail } from "../services/inmovilla"; // Importamos el servicio
+import { getPropertyDetail } from "../services/inmovilla";
 
 const PropertyDetail = () => {
   const { id } = useParams();
@@ -23,7 +22,7 @@ const PropertyDetail = () => {
     const fetchPropertyDetail = async () => {
       setIsLoading(true);
       try {
-        const data = await getPropertyDetail(id); // Usamos el servicio en lugar de fetch directo
+        const data = await getPropertyDetail(id);
         setProperty(data);
       } catch (err) {
         setError(err.message);
@@ -68,7 +67,7 @@ const PropertyDetail = () => {
       {/* Hero Section with main image */}
       <section className="relative h-[60vh]">
         <img
-          src="/api/placeholder/1200/800" // Reemplazar con property.imagen cuando esté disponible
+          src="/api/placeholder/1200/800"
           alt={property.ref}
           className="w-full h-full object-cover"
         />
@@ -125,6 +124,178 @@ const PropertyDetail = () => {
                 )}
               </div>
 
+              {/* Detalles completos */}
+              <div>
+                <h3 className="text-2xl font-light text-primary mb-6">
+                  Detalles completos
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                  {/* Detalles básicos */}
+                  <div className="space-y-3">
+                    {property.m_cons && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-600">
+                          Superficie construida
+                        </span>
+                        <span className="font-medium">
+                          {property.m_cons} m²
+                        </span>
+                      </div>
+                    )}
+                    {property.m_uties && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-600">Superficie útil</span>
+                        <span className="font-medium">
+                          {property.m_uties} m²
+                        </span>
+                      </div>
+                    )}
+                    {property.habitaciones && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-600">Habitaciones</span>
+                        <span className="font-medium">
+                          {property.habitaciones}
+                        </span>
+                      </div>
+                    )}
+                    {property.banyos && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-600">Baños</span>
+                        <span className="font-medium">{property.banyos}</span>
+                      </div>
+                    )}
+                    {property.antiguedad && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-600">Año construcción</span>
+                        <span className="font-medium">
+                          {property.antiguedad}
+                        </span>
+                      </div>
+                    )}
+                    {property.planta !== undefined && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-600">Planta</span>
+                        <span className="font-medium">{property.planta}ª</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Certificación energética */}
+                  <div className="space-y-3">
+                    {property.energialetra && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-600">
+                          Certificación energética
+                        </span>
+                        <span className="font-medium">
+                          {property.energialetra} ({property.energiavalor}{" "}
+                          kWh/m²)
+                        </span>
+                      </div>
+                    )}
+                    {property.emisionesletra && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-600">Emisiones CO2</span>
+                        <span className="font-medium">
+                          {property.emisionesletra} ({property.emisionesvalor}{" "}
+                          kg CO2/m²)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Características y equipamiento */}
+                <div className="mt-8">
+                  <h4 className="text-xl font-light text-primary mb-4">
+                    Características y equipamiento
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {property.cocina_inde === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Cocina independiente</span>
+                      </div>
+                    )}
+                    {property.balcon === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Balcón</span>
+                      </div>
+                    )}
+                    {property.terraza === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Terraza</span>
+                      </div>
+                    )}
+                    {property.arma_empo === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Armarios empotrados</span>
+                      </div>
+                    )}
+                    {property.luz === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Luz</span>
+                      </div>
+                    )}
+                    {property.agua === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Agua</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ubicación y entorno */}
+                <div className="mt-8">
+                  <h4 className="text-xl font-light text-primary mb-4">
+                    Entorno
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {property.centrico === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Céntrico</span>
+                      </div>
+                    )}
+                    {property.costa === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Costa</span>
+                      </div>
+                    )}
+                    {property.autobuses === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Autobuses</span>
+                      </div>
+                    )}
+                    {property.colegios === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Colegios</span>
+                      </div>
+                    )}
+                    {property.supermercados === 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>Supermercados</span>
+                      </div>
+                    )}
+                    {property.distmar && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span>A {property.distmar}m del mar</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Descripción */}
               {property.descripciones && (
                 <div className="prose max-w-none">
@@ -134,28 +305,6 @@ const PropertyDetail = () => {
                   <p>{property.descripciones}</p>
                 </div>
               )}
-
-              {/* Características adicionales */}
-              <div>
-                <h3 className="text-2xl font-light text-primary mb-4">
-                  Características
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {property.ascensor && (
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-secondary rounded-full"></span>
-                      <span>Ascensor</span>
-                    </div>
-                  )}
-                  {property.aire_con && (
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-secondary rounded-full"></span>
-                      <span>Aire acondicionado</span>
-                    </div>
-                  )}
-                  {/* Añadir más características según la API */}
-                </div>
-              </div>
             </div>
 
             {/* Sidebar */}
