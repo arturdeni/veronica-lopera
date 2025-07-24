@@ -5,20 +5,66 @@ export const API_CONFIG = {
 
   // Duración de caché
   CACHE_DURATION: {
-    PROPERTIES: 60 * 60 * 1000, // 1 hora
-    ENUMS: 48 * 60 * 60 * 1000, // 48 horas
+    PROPERTIES: 30 * 60 * 1000, // 30 minutos
+    ENUMS: 6 * 60 * 60 * 1000, // 6 horas
+    PROPERTY_DETAIL: 15 * 60 * 1000, // 15 minutos
   },
 
   // Keys de caché
   CACHE_KEYS: {
-    PROPERTY_TYPES: "inmovilla_propertyTypes",
-    LOCATIONS: "inmovilla_locations",
-    PROPERTIES: "inmovilla_properties",
+    PROPERTY_TYPES: "inmovilla_tipos",
+    LOCATIONS: "inmovilla_ciudades",
+    PROPERTIES: "inmovilla_propiedades",
+    PROPERTY_DETAIL: "inmovilla_detalle",
   },
 
-  // Configuración de requests
+  // Rate limits según documentación
+  RATE_LIMITS: {
+    ENUMS: {
+      PER_MINUTE: 2,
+      PER_10_MINUTES: 10,
+    },
+    PROPERTIES: {
+      PER_MINUTE: 10,
+      PER_10_MINUTES: 50,
+    },
+  },
+
+  // Configuración de requests con delays
   REQUEST: {
-    DELAY_BETWEEN_CALLS: 500, // ms entre peticiones
-    RETRY_ATTEMPTS: 3,
+    DELAY_BETWEEN_CALLS: 1000, // 1 segundo entre llamadas
+    RETRY_ATTEMPTS: 2, // Intentos de reintento
+    TIMEOUT: 15000, // 15 segundos timeout
+  },
+
+  // Endpoints documentados
+  ENDPOINTS: {
+    // Enums
+    TIPOS: "/enums/?tipos",
+    CIUDADES: "/enums/?ciudades=724", // 724 = España
+    ZONAS: "/enums/?zonas=", // + key_loca
+
+    // Propiedades
+    LISTADO: "/propiedades/?listado=1",
+    DETALLE: "/propiedades/", // + ?cod_ofer=
+
+    // Imágenes (según documentación, deberían estar en el detalle)
+    IMAGENES_BASE: "https://crm.inmovilla.com/imagenes/", // Base URL ejemplo
+  },
+
+  // Campos documentados para filtros
+  FILTER_FIELDS: {
+    TIPO: "key_tipo",
+    CIUDAD: "key_loca",
+    ZONA: "key_zona",
+    PRECIO_MIN: "precio_min",
+    PRECIO_MAX: "precio_max",
+    HABITACIONES: "habitaciones",
+    METROS_MIN: "metros_min",
+    REFERENCIA: "ref",
+    ASCENSOR: "ascensor",
+    PISCINA: "piscina_com",
+    GARAJE: "garaje",
+    // Según documentación hay muchos más...
   },
 };

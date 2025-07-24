@@ -1,11 +1,12 @@
-// src/hooks/useProperties.js
-import { useState, useEffect } from "react";
+// src/hooks/useProperties.js - ARCHIVO COMPLETO
+import { useState, useEffect, useCallback } from "react";
 import {
   getProperties,
   getPropertyTypes,
   getLocations,
   searchProperties,
 } from "../services/inmovilla";
+import { getRateLimitStatus } from "../services/api/client";
 
 /**
  * Hook personalizado para manejar propiedades y filtros
@@ -34,30 +35,34 @@ export const useProperties = () => {
     includeUnavailable: false,
   });
 
+  // Estado de rate limits
+  const [rateLimitStatus, setRateLimitStatus] = useState(null);
+
   /**
-   * Carga inicial de datos
+   * Actualiza el estado de rate limits
    */
-  const loadInitialData = async () => {
+  const updateRateLimitStatus = useCallback(() => {
+    const status = getRateLimitStatus();
+    setRateLimitStatus(status);
+  }, []);
+
+  /**
+   * Carga inicial de datos con manejo de errores mejorado
+   */
+  const loadInitialData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    updateRateLimitStatus();
 
     try {
-      console.log("🚀 Loading initial data...");
+      console.log("🚀 Starting initial data load...");
 
-      const [propertiesResult, typesResult, locationsResult] =
-        await Promise.allSettled([
-          getProperties(),
-          getPropertyTypes(),
-          getLocations(),
-        ]);
-
-      // Procesar propiedades
-      if (propertiesResult.status === "fulfilled") {
-        setProperties(propertiesResult.value);
-        console.log("✅ Properties loaded:", propertiesResult.value.length);
-      } else {
-        console.error("❌ Properties failed:", propertiesResult.reason);
-      }
+      // Cargar enums primero (tienen rate limit más estricto)
+      console.log("📋 Loading property types and locations...");
+      const [typesResult, locationsResult] = await Promise.allSettled([
+        getPropertyTypes(),
+        getLocations(),
+      ]);
 
       // Procesar tipos
       if (typesResult.status === "fulfilled") {
@@ -76,31 +81,55 @@ export const useProperties = () => {
         console.error("❌ Locations failed:", locationsResult.reason);
         setLocations([]);
       }
+
+      // Esperar un poco antes de cargar propiedades (rate limiting)
+      console.log("⏱️ Waiting before loading properties...");
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Cargar propiedades
+      console.log("🏠 Loading properties...");
+      const propertiesResult = await getProperties();
+      setProperties(propertiesResult);
+      console.log("✅ Properties loaded:", propertiesResult.length);
     } catch (error) {
       console.error("❌ Error loading initial data:", error);
-      setError("Error loading data. Please try again.");
+
+      // Establecer mensaje de error más específico
+      if (error.message.includes("Rate limit")) {
+        setError(
+          "Límite de peticiones alcanzado. Por favor, espera unos minutos e intenta de nuevo."
+        );
+      } else if (error.message.includes("not found")) {
+        setError(
+          "No se pudieron cargar los datos. Verifica la configuración de la API."
+        );
+      } else {
+        setError("Error cargando datos. Por favor, recarga la página.");
+      }
     } finally {
       setIsLoading(false);
+      updateRateLimitStatus();
     }
-  };
+  }, [updateRateLimitStatus]);
 
   /**
    * Maneja cambios en los filtros
    */
-  const handleFilterChange = (e) => {
+  const handleFilterChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     setFilters((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-  };
+  }, []);
 
   /**
    * Aplica filtros y busca propiedades
    */
-  const applyFilters = async () => {
+  const applyFilters = useCallback(async () => {
     setIsSearching(true);
     setError(null);
+    updateRateLimitStatus();
 
     try {
       console.log("🔍 Applying filters:", filters);
@@ -125,17 +154,25 @@ export const useProperties = () => {
       );
     } catch (error) {
       console.error("❌ Error applying filters:", error);
-      setError("Error applying filters. Please try again.");
+
+      if (error.message.includes("Rate limit")) {
+        setError(
+          "Demasiadas búsquedas. Por favor, espera un momento antes de buscar de nuevo."
+        );
+      } else {
+        setError("Error aplicando filtros. Intenta de nuevo.");
+      }
     } finally {
       setIsSearching(false);
+      updateRateLimitStatus();
     }
-  };
+  }, [filters, updateRateLimitStatus]);
 
   /**
    * Limpia todos los filtros
    */
-  const clearFilters = async () => {
-    setFilters({
+  const clearFilters = useCallback(async () => {
+    const resetFilters = {
       propertyType: "",
       location: "",
       minPrice: "",
@@ -145,23 +182,53 @@ export const useProperties = () => {
       reference: "",
       searchTerm: "",
       includeUnavailable: false,
-    });
+    };
+
+    setFilters(resetFilters);
 
     setIsSearching(true);
     try {
       const allProperties = await getProperties();
       setProperties(allProperties);
     } catch (error) {
-      setError("Error clearing filters.");
+      console.error("❌ Error clearing filters:", error);
+      setError("Error limpiando filtros.");
     } finally {
       setIsSearching(false);
+      updateRateLimitStatus();
     }
-  };
+  }, [updateRateLimitStatus]);
+
+  /**
+   * Recarga todos los datos (con fuerza)
+   */
+  const reloadData = useCallback(async () => {
+    try {
+      setIsSearching(true);
+      const freshProperties = await getProperties({
+        ...filters,
+        forceRefresh: true,
+      });
+      setProperties(freshProperties);
+    } catch (error) {
+      console.error("❌ Error reloading data:", error);
+      setError("Error recargando datos.");
+    } finally {
+      setIsSearching(false);
+      updateRateLimitStatus();
+    }
+  }, [filters, updateRateLimitStatus]);
 
   // Carga inicial cuando el hook se monta
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [loadInitialData]);
+
+  // Actualizar rate limits cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(updateRateLimitStatus, 30000);
+    return () => clearInterval(interval);
+  }, [updateRateLimitStatus]);
 
   return {
     // Datos
@@ -174,11 +241,13 @@ export const useProperties = () => {
     isSearching,
     error,
     filters,
+    rateLimitStatus,
 
     // Acciones
     handleFilterChange,
     applyFilters,
     clearFilters,
     loadInitialData,
+    reloadData,
   };
 };

@@ -1,6 +1,6 @@
-// src/hooks/usePropertyDetail.js
+// src/hooks/usePropertyDetail.js - ARCHIVO COMPLETO
 import { useState, useEffect } from "react";
-import { getPropertyDetail } from "../services/inmovilla";
+import { getPropertyDetailById } from "../services/inmovilla";
 
 /**
  * Hook personalizado para manejar el detalle de una propiedad
@@ -16,19 +16,43 @@ export const usePropertyDetail = (propertyId) => {
    * Carga el detalle de la propiedad
    */
   const loadPropertyDetail = async () => {
-    if (!propertyId) return;
+    if (!propertyId) {
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
       console.log(`🔄 Loading property detail for: ${propertyId}`);
-      const data = await getPropertyDetail(propertyId);
+      const data = await getPropertyDetailById(propertyId);
       setProperty(data);
       console.log("✅ Property detail loaded:", data);
     } catch (err) {
       console.error("❌ Error loading property:", err);
-      setError(err.message);
+
+      // Mensajes de error más específicos según documentación
+      if (err.message.includes("Rate limit")) {
+        setError(
+          "Demasiadas peticiones. Por favor, espera un momento e intenta de nuevo."
+        );
+      } else if (
+        err.message.includes("not found") ||
+        err.message === "Property not found"
+      ) {
+        setError(
+          "Propiedad no encontrada. Es posible que haya sido retirada del mercado."
+        );
+      } else if (err.message.includes("Bad request")) {
+        setError(
+          "Error en los parámetros de la petición. Contacta con soporte."
+        );
+      } else {
+        setError(
+          "Error cargando los detalles de la propiedad. Intenta de nuevo."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -38,11 +62,28 @@ export const usePropertyDetail = (propertyId) => {
    * Alterna el estado de favorito
    */
   const toggleFavorite = () => {
-    setIsFavorite((prev) => !prev);
-    // TODO: Implementar lógica para guardar en favoritos
-    console.log(
-      `${isFavorite ? "Removed from" : "Added to"} favorites: ${property?.ref}`
-    );
+    if (!property) return;
+
+    const newFavoriteStatus = !isFavorite;
+    setIsFavorite(newFavoriteStatus);
+
+    // Gestionar favoritos en localStorage
+    try {
+      const favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+      let newFavorites;
+
+      if (newFavoriteStatus) {
+        newFavorites = [...new Set([...favorites, property.id])];
+        console.log(`❤️ Added to favorites: ${property.ref}`);
+      } else {
+        newFavorites = favorites.filter((id) => id !== property.id);
+        console.log(`💔 Removed from favorites: ${property.ref}`);
+      }
+
+      localStorage.setItem("favorites", JSON.stringify(newFavorites));
+    } catch (error) {
+      console.error("Error managing favorites:", error);
+    }
   };
 
   /**
@@ -51,26 +92,73 @@ export const usePropertyDetail = (propertyId) => {
   const shareProperty = async () => {
     if (!property) return;
 
-    if (navigator.share) {
+    const shareData = {
+      title: `Propiedad ${property.ref} - Verónica Lopera`,
+      text:
+        property.title ||
+        `${
+          property.features?.basic?.rooms
+            ? property.features.basic.rooms + " habitaciones"
+            : "Propiedad"
+        } en ${property.features?.location?.city || "Costa Dorada"}`,
+      url: window.location.href,
+    };
+
+    // Usar Web Share API si está disponible
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare(shareData)
+    ) {
       try {
-        await navigator.share({
-          title: `Propiedad ${property.ref}`,
-          text:
-            property.description ||
-            `Propiedad en ${property.features?.location?.city}`,
-          url: window.location.href,
-        });
+        await navigator.share(shareData);
+        console.log("✅ Property shared successfully");
       } catch (error) {
-        console.log("Error sharing:", error);
+        if (error.name !== "AbortError") {
+          // Usuario canceló
+          console.log("❌ Error sharing:", error);
+          fallbackShare();
+        }
       }
     } else {
-      // Fallback: copiar al portapapeles
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        alert("Enlace copiado al portapapeles");
-      } catch (error) {
-        console.error("Error copying to clipboard:", error);
-      }
+      fallbackShare();
+    }
+  };
+
+  /**
+   * Compartir fallback (copiar al portapapeles)
+   */
+  const fallbackShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+
+      // Mostrar notificación temporal (puedes mejorarlo con toast)
+      const notification = document.createElement("div");
+      notification.textContent = "¡Enlace copiado al portapapeles!";
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #093721;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-family: system-ui;
+      `;
+      document.body.appendChild(notification);
+
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 3000);
+
+      console.log("✅ URL copied to clipboard");
+    } catch (error) {
+      console.error("❌ Error copying to clipboard:", error);
+      alert(
+        "No se pudo copiar el enlace. Comparte manualmente esta URL: " +
+          window.location.href
+      );
     }
   };
 
@@ -79,30 +167,18 @@ export const usePropertyDetail = (propertyId) => {
     loadPropertyDetail();
   }, [propertyId]);
 
-  // Verificar si está en favoritos al cargar
+  // Verificar si está en favoritos al cargar la propiedad
   useEffect(() => {
     if (property) {
-      // TODO: Verificar si está en favoritos desde localStorage o API
-      const favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
-      setIsFavorite(favorites.includes(property.id));
+      try {
+        const favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+        setIsFavorite(favorites.includes(property.id));
+      } catch (error) {
+        console.error("Error reading favorites:", error);
+        setIsFavorite(false);
+      }
     }
   }, [property]);
-
-  // Guardar/quitar favorito cuando cambia
-  useEffect(() => {
-    if (property) {
-      const favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
-      let newFavorites;
-
-      if (isFavorite) {
-        newFavorites = [...new Set([...favorites, property.id])];
-      } else {
-        newFavorites = favorites.filter((id) => id !== property.id);
-      }
-
-      localStorage.setItem("favorites", JSON.stringify(newFavorites));
-    }
-  }, [isFavorite, property]);
 
   return {
     property,
