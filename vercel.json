@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/inmovilla/[...path].js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api-inmovilla/(.*)",
+      "destination": "/api/inmovilla/$1"
+    }
+  ]
+}

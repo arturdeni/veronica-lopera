@@ -1,6 +1,22 @@
 // src/services/api/config.js
+const getBaseUrl = () => {
+  // Si estamos en el navegador
+  if (typeof window !== "undefined") {
+    // En producción (Vercel u otros), usar la API route
+    if (
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1"
+    ) {
+      return "/api/inmovilla";
+    }
+  }
+
+  // En desarrollo local, usar el proxy de Vite
+  return "/api-inmovilla";
+};
+
 export const API_CONFIG = {
-  BASE_URL: "/api-inmovilla",
+  BASE_URL: getBaseUrl(),
   TOKEN: "0F6399CF144116F22D567B761ABA2CEF",
 
   // Duración de caché
