@@ -1,7 +1,18 @@
-// src/services/api/enums.js - ARCHIVO COMPLETO
+// src/services/api/enums.js - ARCHIVO COMPLETO ACTUALIZADO
 import { apiClient, delay } from "./client";
 import { getFromCache, setToCache } from "./cache";
 import { API_CONFIG } from "./config";
+
+/**
+ * Detecta si estamos en producción
+ */
+const isProduction = () => {
+  return (
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  );
+};
 
 /**
  * Obtiene los tipos de propiedades disponibles
@@ -20,20 +31,26 @@ export const getPropertyTypes = async () => {
     await delay(API_CONFIG.REQUEST.DELAY_BETWEEN_CALLS);
     console.log("🔄 Fetching property types from API");
 
-    // Usar endpoint correcto según documentación
-    const data = await apiClient(API_CONFIG.ENDPOINTS.TIPOS);
+    // Usar endpoint correcto según el entorno
+    const endpoint = isProduction()
+      ? "/enums" // Ruta específica en Vercel
+      : "/enums/"; // Ruta original en desarrollo
+
+    const data = await apiClient(endpoint, {
+      params: { tipos: "" }, // Parámetro requerido
+    });
+
     const formattedTypes = [];
 
     if (data && typeof data === "object") {
       // Según documentación, key_tipo contiene los tipos principales
-      // Buscar específicamente key_tipo en la respuesta
       const keyTipoData = data.key_tipo || data;
 
       if (Array.isArray(keyTipoData)) {
         keyTipoData.forEach((item) => {
           if (item?.nombre && item?.valor > 0) {
             formattedTypes.push({
-              value: item.valor.toString(), // Solo el valor, no el prefijo
+              value: item.valor.toString(),
               label: item.nombre,
               originalValue: item.valor,
             });
@@ -86,8 +103,15 @@ export const getLocations = async () => {
     await delay(API_CONFIG.REQUEST.DELAY_BETWEEN_CALLS);
     console.log("🔄 Fetching locations from API");
 
-    // Usar endpoint correcto (724 = España según documentación)
-    const data = await apiClient(API_CONFIG.ENDPOINTS.CIUDADES);
+    // Usar endpoint correcto según el entorno
+    const endpoint = isProduction()
+      ? "/enums" // Ruta específica en Vercel
+      : "/enums/"; // Ruta original en desarrollo
+
+    const data = await apiClient(endpoint, {
+      params: { ciudades: "724" }, // 724 = España según documentación
+    });
+
     const formattedLocations = [];
 
     if (Array.isArray(data)) {

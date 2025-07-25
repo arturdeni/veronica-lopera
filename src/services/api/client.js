@@ -1,4 +1,4 @@
-// src/services/api/client.js - ARCHIVO COMPLETO
+// src/services/api/client.js - ARCHIVO COMPLETO ACTUALIZADO
 import { API_CONFIG } from "./config";
 
 // Rate limiting tracker
@@ -46,12 +46,23 @@ const incrementRateLimit = (type) => {
 export const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * Detecta si estamos en producción
+ */
+const isProduction = () => {
+  return (
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  );
+};
+
+/**
  * Cliente HTTP mejorado para la API Inmovilla
  */
 export const apiClient = async (endpoint, options = {}) => {
   try {
     // Determinar tipo de petición para rate limiting
-    const requestType = endpoint.includes("/enums/") ? "enums" : "properties";
+    const requestType = endpoint.includes("/enums") ? "enums" : "properties";
 
     // Verificar rate limits
     if (!canMakeRequest(requestType)) {
@@ -84,6 +95,11 @@ export const apiClient = async (endpoint, options = {}) => {
 
     console.log(
       `🌐 API Request [${requestType}]: ${API_CONFIG.BASE_URL}${finalEndpoint}`
+    );
+    console.log(
+      `🔧 Environment: ${
+        isProduction() ? "Production (Vercel)" : "Development (Local)"
+      }`
     );
 
     // Hacer la petición
@@ -151,19 +167,20 @@ export const apiClient = async (endpoint, options = {}) => {
 
 /**
  * Cliente especializado para obtener detalles de propiedades
- * Usa parámetros específicos según la documentación
  */
 export const getPropertyDetail = async (cod_ofer) => {
   console.log(`🔍 Fetching property detail: ${cod_ofer}`);
 
-  return await apiClient("/propiedades/", {
+  // Usar ruta específica en producción
+  const endpoint = isProduction() ? "/propiedades" : "/propiedades/";
+
+  return await apiClient(endpoint, {
     params: { cod_ofer },
   });
 };
 
 /**
  * Cliente especializado para listado con filtros
- * Usa los nombres de campos correctos según documentación
  */
 export const getPropertiesList = async (filters = {}) => {
   const params = {
@@ -188,7 +205,10 @@ export const getPropertiesList = async (filters = {}) => {
 
   console.log("🔍 Fetching properties list with filters:", params);
 
-  return await apiClient("/propiedades/", { params });
+  // Usar ruta específica en producción
+  const endpoint = isProduction() ? "/propiedades" : "/propiedades/";
+
+  return await apiClient(endpoint, { params });
 };
 
 /**
