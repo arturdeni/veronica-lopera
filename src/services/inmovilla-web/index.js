@@ -1,43 +1,14 @@
-// src/services/inmovilla.js - MIGRACIÓN A API WEB CORREGIDA
-import InmovillaWebClient from "./inmovilla-web/client.js";
+// src/services/inmovilla-web/index.js - VERSIÓN CORREGIDA
+import InmovillaWebClient from "./client.js";
 
-// ✅ SOLUCIÓN: Inicialización lazy del cliente
-let client = null;
-
-/**
- * Obtiene o crea el cliente de Inmovilla
- */
-const getClient = () => {
-  if (!client) {
-    console.log("🔧 Initializing Inmovilla Web Client...");
-
-    // Verificar que tenemos las variables necesarias
-    const numagencia = process.env.REACT_APP_INMOVILLA_AGENCY;
-    const password = process.env.REACT_APP_INMOVILLA_PASSWORD;
-
-    if (!numagencia || !password) {
-      console.error("❌ Missing Inmovilla credentials:", {
-        hasAgency: !!numagencia,
-        hasPassword: !!password,
-        agency: numagencia,
-      });
-      throw new Error(
-        "Missing Inmovilla API credentials. Check your .env.local file."
-      );
-    }
-
-    client = new InmovillaWebClient({
-      numagencia: numagencia,
-      addnumagencia: process.env.REACT_APP_INMOVILLA_USER_SUFFIX || "",
-      password: password,
-      idioma: parseInt(process.env.REACT_APP_INMOVILLA_LANGUAGE) || 1,
-    });
-
-    console.log("✅ Inmovilla Web Client initialized successfully");
-  }
-
-  return client;
-};
+// Configuración del cliente - CORREGIDO
+const client = new InmovillaWebClient({
+  // ✅ Usar variables REACT_APP_ que están disponibles en el cliente
+  numagencia: process.env.REACT_APP_INMOVILLA_AGENCY,
+  addnumagencia: process.env.REACT_APP_INMOVILLA_USER_SUFFIX || "",
+  password: process.env.REACT_APP_INMOVILLA_PASSWORD,
+  idioma: parseInt(process.env.REACT_APP_INMOVILLA_LANGUAGE) || 1,
+});
 
 /**
  * Obtiene tipos de propiedades
@@ -46,7 +17,6 @@ const getClient = () => {
 export const getPropertyTypes = async () => {
   try {
     console.log("🔄 Loading property types...");
-    const client = getClient();
     const types = await client.getPropertyTypes();
     console.log(`✅ Property types loaded: ${types.length}`);
     return types;
@@ -63,7 +33,6 @@ export const getPropertyTypes = async () => {
 export const getLocations = async () => {
   try {
     console.log("🔄 Loading locations...");
-    const client = getClient();
     const cities = await client.getCities();
     console.log(`✅ Locations loaded: ${cities.length}`);
     return cities;
@@ -79,7 +48,6 @@ export const getLocations = async () => {
 export const getZones = async (cityId) => {
   try {
     console.log(`🔄 Loading zones for city: ${cityId}`);
-    const client = getClient();
     const zones = await client.getZones(cityId);
     console.log(`✅ Zones loaded: ${zones.length}`);
     return zones;
@@ -96,7 +64,6 @@ export const getZones = async (cityId) => {
 export const getProperties = async (filters = {}) => {
   try {
     console.log("🔄 Loading properties with filters:", filters);
-    const client = getClient();
 
     // Convertir filtros del formato anterior al nuevo
     const webFilters = adaptFiltersToWebAPI(filters);
@@ -128,7 +95,6 @@ export const getProperties = async (filters = {}) => {
 export const getPropertyDetailById = async (codOfer) => {
   try {
     console.log(`🔄 Loading property detail: ${codOfer}`);
-    const client = getClient();
     const detail = await client.getPropertyDetail(codOfer);
     console.log(`✅ Property detail loaded: ${detail.ref}`);
     return detail;
@@ -190,9 +156,6 @@ export const searchProperties = async (searchTerm, filters = {}) => {
 export const getFeaturedProperties = async (limit = 10) => {
   try {
     console.log(`🔄 Loading featured properties (${limit})`);
-    const client = getClient();
-
-    // Usar el método específico del cliente
     const procesos = [
       {
         tipo: "destacados",
@@ -272,7 +235,6 @@ export const getAPIStatus = async () => {
  * Limpia el caché
  */
 export const clearAllCache = () => {
-  const client = getClient();
   client.clearCache();
   console.log("🧹 All cache cleared");
 };
@@ -320,16 +282,5 @@ export const API_CONFIG = {
   },
 };
 
-/**
- * Exportar el cliente por si se necesita acceso directo (lazy)
- */
-export const getWebClient = () => getClient();
-
-// Exportar funciones de compatibilidad
-export {
-  getPropertyTypes as getPropertyTypesWeb,
-  getLocations as getLocationsWeb,
-  getProperties as getPropertiesWeb,
-  getPropertyDetailById as getPropertyDetailByIdWeb,
-  searchProperties as searchPropertiesWeb,
-};
+// Exportar el cliente por si se necesita acceso directo
+export { client as webClient };
