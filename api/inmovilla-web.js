@@ -1,12 +1,9 @@
-// api/inmovilla-web.js
-/**
- * Endpoint para la API Web de Inmovilla
- * Actúa como proxy y adaptador entre el frontend React y la API PHP legacy
- */
-
-const INMOVILLA_API_URL = "https://apiweb.inmovilla.com/apiweb/apiweb.php";
-
+// api/inmovilla-web.js - VERSIÓN CORREGIDA CON IP
 export default async function handler(req, res) {
+  console.log("🔍 Inmovilla Web API called");
+  console.log("📋 Method:", req.method);
+  console.log("📋 Headers:", Object.keys(req.headers));
+
   // Manejar CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -54,30 +51,67 @@ export default async function handler(req, res) {
       requestText += `;${proceso.tipo};${proceso.posinicial};${proceso.numelementos};${proceso.where};${proceso.orden}`;
     });
 
+    console.log("📝 Request text:", requestText);
+
+    // Función para obtener la IP del cliente
+    function getClientIP(req) {
+      const forwarded = req.headers["x-forwarded-for"];
+      const real = req.headers["x-real-ip"];
+      const cloudflare = req.headers["cf-connecting-ip"];
+
+      if (cloudflare) return cloudflare;
+      if (forwarded) return forwarded.split(",")[0].trim();
+      if (real) return real;
+      return (
+        req.connection?.remoteAddress ||
+        req.socket?.remoteAddress ||
+        req.connection?.socket?.remoteAddress ||
+        "127.0.0.1"
+      );
+    }
+
+    // Obtener IP del cliente
+    const clientIP = getClientIP(req);
+    console.log("🌐 Client IP:", clientIP);
+
+    // Para testing - usar IP autorizada si estamos en desarrollo
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    const ipToSend = "127.0.0.1" // Cambia por una IP que sepas que está autorizada
+
+    console.log("🌐 IP to send to Inmovilla:", ipToSend);
+
     // Preparar parámetros para la API
     const formData = new URLSearchParams();
     formData.append("param", requestText);
     formData.append("elDominio", req.headers.host || "localhost");
+
+    // ✅ AÑADIR LA IP DEL CLIENTE
+    formData.append("ia", ipToSend);
 
     if (json) {
       formData.append("json", "1");
     }
 
     console.log("📤 Sending to Inmovilla:", {
-      url: INMOVILLA_API_URL,
+      url: "https://apiweb.inmovilla.com/apiweb/apiweb.php",
       textLength: requestText.length,
+      clientIP: clientIP,
+      domain: req.headers.host,
       json,
     });
 
     // Realizar petición a Inmovilla
-    const response = await fetch(INMOVILLA_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "Mozilla/5.0 (compatible; Veronica-Lopera-Web/1.0)",
-      },
-      body: formData.toString(),
-    });
+    const response = await fetch(
+      "https://apiweb.inmovilla.com/apiweb/apiweb.php",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": "Mozilla/5.0 (compatible; Veronica-Lopera-Web/1.0)",
+        },
+        body: formData.toString(),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -89,6 +123,7 @@ export default async function handler(req, res) {
     console.log("📥 Response from Inmovilla:", {
       status: response.status,
       contentLength: responseText.length,
+      preview: responseText.substring(0, 200),
       isJson: json,
     });
 
@@ -108,6 +143,7 @@ export default async function handler(req, res) {
         res.status(500).json({
           error: "Invalid JSON response from Inmovilla API",
           rawResponse: responseText.substring(0, 500),
+          parseError: parseError.message,
         });
       }
     } else {

@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
+import InmovillaWebTest from "./components/InmovillaWebTest";
 import HomePage from "./pages/HomePage";
 import Nosotras from "./pages/Nosotras";
 import Contacto from "./pages/Contacto";
@@ -20,6 +21,7 @@ function App() {
             <Route path="/contacto" element={<Contacto />} />
             <Route path="/alquiler-venta" element={<AlquilerVenta />} />
             <Route path="/propiedad/:id" element={<PropertyDetail />} />
+            <Route path="/test-api" element={<InmovillaWebTest />} />
           </Routes>
         </main>
         <Footer />
