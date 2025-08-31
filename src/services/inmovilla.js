@@ -1,7 +1,8 @@
-// src/services/inmovilla.js - MIGRACIÓN A API WEB CORREGIDA
+// src/services/inmovilla.js - VERSIÓN COMPLETAMENTE CORREGIDA
 import InmovillaWebClient from "./inmovilla-web/client.js";
+import { validateInmovillaConfig } from "../config/env.js";
 
-// ✅ SOLUCIÓN: Inicialización lazy del cliente
+// ✅ SOLUCIÓN: Inicialización lazy del cliente usando configuración centralizada
 let client = null;
 
 /**
@@ -11,27 +12,15 @@ const getClient = () => {
   if (!client) {
     console.log("🔧 Initializing Inmovilla Web Client...");
 
-    // Verificar que tenemos las variables necesarias
-    const numagencia = process.env.REACT_APP_INMOVILLA_AGENCY;
-    const password = process.env.REACT_APP_INMOVILLA_PASSWORD;
-
-    if (!numagencia || !password) {
-      console.error("❌ Missing Inmovilla credentials:", {
-        hasAgency: !!numagencia,
-        hasPassword: !!password,
-        agency: numagencia,
-      });
+    // Usar la validación centralizada en lugar de process.env
+    if (!validateInmovillaConfig()) {
       throw new Error(
-        "Missing Inmovilla API credentials. Check your .env.local file."
+        "Missing Inmovilla API credentials. Check your .env.local file and ensure variables start with VITE_"
       );
     }
 
-    client = new InmovillaWebClient({
-      numagencia: numagencia,
-      addnumagencia: process.env.REACT_APP_INMOVILLA_USER_SUFFIX || "",
-      password: password,
-      idioma: parseInt(process.env.REACT_APP_INMOVILLA_LANGUAGE) || 1,
-    });
+    // El cliente ya usa la configuración centralizada internamente
+    client = new InmovillaWebClient();
 
     console.log("✅ Inmovilla Web Client initialized successfully");
   }
@@ -41,7 +30,6 @@ const getClient = () => {
 
 /**
  * Obtiene tipos de propiedades
- * Compatible con la interfaz anterior
  */
 export const getPropertyTypes = async () => {
   try {
@@ -58,7 +46,6 @@ export const getPropertyTypes = async () => {
 
 /**
  * Obtiene ubicaciones/ciudades
- * Compatible con la interfaz anterior
  */
 export const getLocations = async () => {
   try {
@@ -91,7 +78,6 @@ export const getZones = async (cityId) => {
 
 /**
  * Obtiene listado de propiedades con filtros
- * Compatible con la interfaz anterior pero con mucho más detalle
  */
 export const getProperties = async (filters = {}) => {
   try {
@@ -113,7 +99,6 @@ export const getProperties = async (filters = {}) => {
       }`
     );
 
-    // Devolver en formato compatible con la interfaz anterior
     return result.items || [];
   } catch (error) {
     console.error("❌ Error loading properties:", error);
@@ -123,14 +108,13 @@ export const getProperties = async (filters = {}) => {
 
 /**
  * Obtiene detalle completo de una propiedad por ID
- * Reemplaza a getPropertyDetailById
  */
 export const getPropertyDetailById = async (codOfer) => {
   try {
     console.log(`🔄 Loading property detail: ${codOfer}`);
     const client = getClient();
     const detail = await client.getPropertyDetail(codOfer);
-    console.log(`✅ Property detail loaded: ${detail.ref}`);
+    console.log(`✅ Property detail loaded`);
     return detail;
   } catch (error) {
     console.error("❌ Error loading property detail:", error);
@@ -140,7 +124,6 @@ export const getPropertyDetailById = async (codOfer) => {
 
 /**
  * Búsqueda de propiedades por término de texto
- * Compatible con la interfaz anterior
  */
 export const searchProperties = async (searchTerm, filters = {}) => {
   try {
@@ -159,7 +142,7 @@ export const searchProperties = async (searchTerm, filters = {}) => {
       });
     }
 
-    // Búsqueda más amplia por ciudades, zonas, etc.
+    // Búsqueda más amplia
     const searchFilters = {
       ...filters,
       searchTerm: searchTerm.toLowerCase(),
@@ -171,9 +154,9 @@ export const searchProperties = async (searchTerm, filters = {}) => {
     const filtered = results.filter(
       (property) =>
         property.ref?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.zone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.propertyType?.toLowerCase().includes(searchTerm.toLowerCase())
+        property.ciudad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        property.zona?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        property.nbtipo?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     console.log(`✅ Search results: ${filtered.length}`);
@@ -192,24 +175,19 @@ export const getFeaturedProperties = async (limit = 10) => {
     console.log(`🔄 Loading featured properties (${limit})`);
     const client = getClient();
 
-    // Usar el método específico del cliente
-    const procesos = [
+    const result = await client.makeRequest([
       {
         tipo: "destacados",
         posinicial: 1,
         numelementos: limit,
         where: "",
-        orden: "fechaact desc",
+        orden: "fechaact DESC",
       },
-    ];
+    ]);
 
-    const result = await client.makeRequest(procesos);
-    const formatted = client.formatPropertiesList(result.destacados || []);
-
-    console.log(
-      `✅ Featured properties loaded: ${formatted.items?.length || 0}`
-    );
-    return formatted.items || [];
+    const items = result.destacados ? result.destacados.slice(1) : [];
+    console.log(`✅ Featured properties loaded: ${items.length}`);
+    return items;
   } catch (error) {
     console.error("❌ Error loading featured properties:", error);
     return [];
@@ -223,40 +201,33 @@ function adaptFiltersToWebAPI(filters) {
   const adapted = {};
 
   // Mapear campos principales
-  if (filters.propertyType) adapted.propertyType = filters.propertyType;
-  if (filters.location) adapted.location = filters.location;
-  if (filters.zone) adapted.zone = filters.zone;
-  if (filters.minPrice) adapted.minPrice = parseInt(filters.minPrice);
-  if (filters.maxPrice) adapted.maxPrice = parseInt(filters.maxPrice);
-  if (filters.rooms) adapted.rooms = parseInt(filters.rooms);
-  if (filters.minSurface) adapted.minSurface = parseInt(filters.minSurface);
+  if (filters.propertyType) adapted.tipo = filters.propertyType;
+  if (filters.location) adapted.ciudad = filters.location;
+  if (filters.zone) adapted.zona = filters.zone;
+  if (filters.minPrice) adapted.precioMin = parseInt(filters.minPrice);
+  if (filters.maxPrice) adapted.precioMax = parseInt(filters.maxPrice);
+  if (filters.rooms) adapted.habitaciones = parseInt(filters.rooms);
+  if (filters.minSurface) adapted.metrosMin = parseInt(filters.minSurface);
+  if (filters.maxSurface) adapted.metrosMax = parseInt(filters.maxSurface);
   if (filters.reference) adapted.reference = filters.reference;
 
   // Características especiales
-  if (filters.elevator)
-    adapted.features = { ...adapted.features, elevator: true };
-  if (filters.pool) adapted.features = { ...adapted.features, pool: true };
-  if (filters.airConditioning)
-    adapted.features = { ...adapted.features, airConditioning: true };
-  if (filters.parking)
-    adapted.features = { ...adapted.features, parking: true };
-
-  // Incluir no disponibles
-  if (filters.includeUnavailable !== undefined) {
-    adapted.includeUnavailable = filters.includeUnavailable;
-  }
+  if (filters.elevator) adapted.ascensor = true;
+  if (filters.pool) adapted.piscina = true;
+  if (filters.airConditioning) adapted.aireAcondicionado = true;
+  if (filters.parking) adapted.parking = true;
 
   return adapted;
 }
 
 /**
- * Obtiene información del estado de la API (para debugging)
+ * Obtiene información del estado de la API
  */
 export const getAPIStatus = async () => {
   return {
     type: "Inmovilla Web API",
     rateLimits: {
-      general: "~70 peticiones/minuto",
+      general: "Limitado por IP y peticiones por minuto",
       notes: "Más flexible que API REST",
     },
     cacheInfo: {
@@ -272,9 +243,10 @@ export const getAPIStatus = async () => {
  * Limpia el caché
  */
 export const clearAllCache = () => {
-  const client = getClient();
-  client.clearCache();
-  console.log("🧹 All cache cleared");
+  if (client) {
+    client.clearCache();
+    console.log("🧹 All cache cleared");
+  }
 };
 
 /**
@@ -289,7 +261,7 @@ export const forceReloadAllData = async () => {
     const [types, locations, properties] = await Promise.allSettled([
       getPropertyTypes(),
       getLocations(),
-      getProperties({ forceRefresh: true }),
+      getProperties({ limit: 20 }),
     ]);
 
     return {
@@ -321,15 +293,6 @@ export const API_CONFIG = {
 };
 
 /**
- * Exportar el cliente por si se necesita acceso directo (lazy)
+ * Exportar el cliente para acceso directo
  */
 export const getWebClient = () => getClient();
-
-// Exportar funciones de compatibilidad
-export {
-  getPropertyTypes as getPropertyTypesWeb,
-  getLocations as getLocationsWeb,
-  getProperties as getPropertiesWeb,
-  getPropertyDetailById as getPropertyDetailByIdWeb,
-  searchProperties as searchPropertiesWeb,
-};

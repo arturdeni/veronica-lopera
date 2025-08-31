@@ -76,7 +76,8 @@ export default async function handler(req, res) {
 
     // Para testing - usar IP autorizada si estamos en desarrollo
     const isDevelopment = process.env.NODE_ENV !== "production";
-    const ipToSend = "127.0.0.1" // Cambia por una IP que sepas que está autorizada
+    const ipToSend = isDevelopment ? '127.0.0.1' : clientIP;
+    // const ipToSend = "127.0.0.1" // Cambia por una IP que sepas que está autorizada
 
     console.log("🌐 IP to send to Inmovilla:", ipToSend);
 
